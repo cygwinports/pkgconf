@@ -1,0 +1,68 @@
+NAME="pkgconf"
+VERSION=1.4.2
+RELEASE=1
+CATEGORY="Devel"
+SUMMARY="Package compiler and linker metadata tool (alternative to pkg-config)"
+DESCRIPTION="pkgconf is a program which helps to configure compiler and linker
+flags for development frameworks.  It is an alternative to pkg-config."
+HOMEPAGE="http://pkgconf.org/"
+SRC_URI="https://github.com/pkgconf/pkgconf/archive/pkgconf-${VERSION}/pkgconf-pkgconf-${VERSION}.tar.gz"
+SRC_DIR="pkgconf-pkgconf-${VERSION}"
+
+PKG_NAMES="pkgconf libpkgconf3 libpkgconf-devel pkg-config"
+pkgconf_CONTENTS="
+	--exclude=libpkgconf.pc
+	usr/bin/pkgconf.exe
+	usr/lib/pkgconfig/
+	usr/share/doc/pkgconf/
+	usr/share/man/man1/pkgconf.1*
+	usr/share/man/man5/pc.5*
+	usr/share/pkgconfig/
+"
+pkg_config_REQUIRES=${NAME}
+pkg_config_CONTENTS="
+	usr/bin/pkg-config
+	usr/bin/${ARCH}-${ARCH_i686+pc}${ARCH_x86_64+unknown}-cygwin-pkg-config
+	usr/share/aclocal/pkg.m4
+	usr/share/man/man1/pkg-config.1*
+	usr/share/man/man7/pkg.m4.7*
+"
+libpkgconf3_CATEGORY="Libs"
+libpkgconf3_SUMMARY="pkgconf library implemenation"
+libpkgconf3_DESCRIPTION="libpkgconf is a library which provides access to most
+of pkgconf functionality, to allow other tooling such as compilers and IDEs to
+discover and use frameworks configured by pkgconf."
+libpkgconf3_CONTENTS="usr/bin/cygpkgconf-3.dll"
+libpkgconf_devel_CATEGORY="Libs"
+libpkgconf_devel_SUMMARY=${libpkgconf2_SUMMARY}
+libpkgconf_devel_DESCRIPTION=${libpkgconf2_DESCRIPTION}
+libpkgconf_devel_CONTENTS="
+	usr/include/pkgconf/
+	usr/lib/libpkgconf.dll.a
+	usr/lib/pkgconfig/libpkgconf.pc
+"
+
+CYGCONF_ARGS="
+	--with-pkg-config-dir=/usr/lib/pkgconfig:/usr/share/pkgconfig
+	--with-system-includedir=/usr/include
+	--with-system-libdir=/usr/lib
+	ac_cv_func_cygwin_conv_path=no
+"
+
+src_install() {
+	cd ${B}
+	cyginstall
+
+	keepdir /usr/{lib,share}/pkgconfig
+	dosym pkgconf.exe /usr/bin/pkg-config
+	dosym pkgconf.1 /usr/share/man/man1/pkg-config.1
+
+	cat > ${D}/usr/bin/${ARCH}-${ARCH_i686+pc}${ARCH_x86_64+unknown}-cygwin-pkg-config <<_EOF
+#!/bin/sh
+export PKG_CONFIG_LIBDIR="\${PKG_CONFIG_LIBDIR:-/usr/lib/pkgconfig:/usr/share/pkgconfig}"
+export PKG_CONFIG_SYSTEM_INCLUDE_PATH="\${PKG_CONFIG_SYSTEM_INCLUDE_PATH:-/usr/include}"
+export PKG_CONFIG_SYSTEM_LIBRARY_PATH="\${PKG_CONFIG_SYSTEM_LIBRARY_PATH:-/usr/lib}"
+exec pkgconf \$@
+_EOF
+	chmod +x ${D}/usr/bin/${ARCH}-${ARCH_i686+pc}${ARCH_x86_64+unknown}-cygwin-pkg-config
+}
