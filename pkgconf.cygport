@@ -1,28 +1,30 @@
 NAME="pkgconf"
-VERSION=1.4.2
+VERSION=1.6.0
 RELEASE=1
 CATEGORY="Devel"
 SUMMARY="Package compiler and linker metadata tool (alternative to pkg-config)"
 DESCRIPTION="pkgconf is a program which helps to configure compiler and linker
 flags for development frameworks.  It is an alternative to pkg-config."
 HOMEPAGE="http://pkgconf.org/"
-SRC_URI="https://github.com/pkgconf/pkgconf/archive/pkgconf-${VERSION}/pkgconf-pkgconf-${VERSION}.tar.gz"
-SRC_DIR="pkgconf-pkgconf-${VERSION}"
+SRC_URI="https://distfiles.dereferenced.org/pkgconf/pkgconf-${VERSION}.tar.xz"
 
 PKG_NAMES="pkgconf libpkgconf3 libpkgconf-devel pkg-config"
 pkgconf_CONTENTS="
 	--exclude=libpkgconf.pc
+	etc/pkgconfig/personality.d/*
 	usr/bin/pkgconf.exe
 	usr/lib/pkgconfig/
 	usr/share/doc/pkgconf/
 	usr/share/man/man1/pkgconf.1*
 	usr/share/man/man5/pc.5*
+	usr/share/man/man5/pkgconf-*.5*
 	usr/share/pkgconfig/
 "
 pkg_config_REQUIRES=${NAME}
+pkg_config_OBSOLETES="mingw64-i686-pkg-config mingw64-x86_64-pkg-config"
 pkg_config_CONTENTS="
 	usr/bin/pkg-config
-	usr/bin/${ARCH}-${ARCH_i686+pc}${ARCH_x86_64+unknown}-cygwin-pkg-config
+	usr/bin/*-*-*-pkg-config
 	usr/share/aclocal/pkg.m4
 	usr/share/man/man1/pkg-config.1*
 	usr/share/man/man7/pkg.m4.7*
@@ -41,8 +43,12 @@ libpkgconf_devel_CONTENTS="
 	usr/lib/libpkgconf.dll.a
 	usr/lib/pkgconfig/libpkgconf.pc
 "
+pkgconf_debuginfo_OBSOLETES="pkg-config-debuginfo mingw64-i686-pkg-config-debuginfo mingw64-x86_64-pkg-config-debuginfo"
+
+DIFF_EXCLUDES="test_env.sh"
 
 CYGCONF_ARGS="
+	--with-personality-dir=/etc/pkgconfig/personality.d
 	--with-pkg-config-dir=/usr/lib/pkgconfig:/usr/share/pkgconfig
 	--with-system-includedir=/usr/include
 	--with-system-libdir=/usr/lib
@@ -64,5 +70,22 @@ export PKG_CONFIG_SYSTEM_INCLUDE_PATH="\${PKG_CONFIG_SYSTEM_INCLUDE_PATH:-/usr/i
 export PKG_CONFIG_SYSTEM_LIBRARY_PATH="\${PKG_CONFIG_SYSTEM_LIBRARY_PATH:-/usr/lib}"
 exec pkgconf \$@
 _EOF
-	chmod +x ${D}/usr/bin/${ARCH}-${ARCH_i686+pc}${ARCH_x86_64+unknown}-cygwin-pkg-config
+
+	dodir /etc/pkgconfig/personality.d
+	for mgw in i686-w64-mingw32 x86_64-w64-mingw32
+	do
+		cat > ${D}/etc/pkgconfig/personality.d/${mgw}.personality <<_EOF
+Triplet: ${mgw}
+SysrootDir: /usr/${mgw}/sys-root
+DefaultSearchPaths: /usr/${mgw}/sys-root/mingw/lib/pkgconfig:/usr/${mgw}/sys-root/mingw/share/pkgconfig:/usr/share/pkgconfig
+SystemIncludePaths: /usr/${mgw}/sys-root/mingw/include
+SystemLibraryPaths: /usr/${mgw}/sys-root/mingw/lib
+_EOF
+		cat > ${D}/usr/bin/${mgw}-pkg-config <<_EOF
+#!/bin/sh
+exec pkgconf --personality=${mgw} \$@
+_EOF
+	done
+
+	chmod +x ${D}/usr/bin/*-pkg-config
 }
